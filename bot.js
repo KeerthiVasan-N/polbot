@@ -5,6 +5,7 @@ const client = new Client({
   authStrategy: new LocalAuth({ dataPath: "wwebjs_auth" }),
   puppeteer: {
     headless: true,
+    executablePath: process.env.PUPPETEER_EXECUTABLE_PATH || undefined,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   },
 });
@@ -36,10 +37,12 @@ client.on("ready", () => {
 // Default vote option index (0-based), controlled by sending "vote-1", "vote-2", etc. to yourself
 let voteOptionIndex = 0;
 
-// Listen for config messages sent to yourself (e.g. "vote-1", "vote-2")
+// Listen for config messages sent to yourself
 function handleConfigMessage(msg) {
   if (!msg.fromMe) return;
   const text = (msg.body || "").trim().toLowerCase();
+
+  // "vote-1", "vote-2", etc. to change vote option
   const match = text.match(/^vote-(\d+)$/);
   if (match) {
     const num = parseInt(match[1], 10);
@@ -49,6 +52,15 @@ function handleConfigMessage(msg) {
         `⚙️ Vote option changed to: option ${num} (index ${voteOptionIndex})`,
       );
     }
+  }
+
+  // "reset" to logout and re-scan QR on next start
+  if (text === "reset") {
+    console.log("🔄 Logging out... Restart the bot to scan a new QR.");
+    client
+      .logout()
+      .then(() => process.exit(0))
+      .catch(() => process.exit(1));
   }
 }
 
@@ -67,11 +79,11 @@ async function handlePollMessage(msg) {
 
     const idx = Math.min(voteOptionIndex, options.length - 1);
     const chosen = options[idx];
+
+    await msg.vote([chosen.name]);
     console.log(
       `📊 Poll detected: "${pollName}" — voting for option ${idx + 1}: "${chosen.name}"`,
     );
-
-    await msg.vote([chosen.name]);
     console.log(`🗳️ ✅ Voted for "${chosen.name}" in poll "${pollName}"`);
   } catch (error) {
     console.log("❌ Failed to vote:", error?.message || error);

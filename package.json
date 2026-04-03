@@ -4,6 +4,7 @@
   "main": "bot.js",
   "scripts": {
     "start": "node bot.js",
+    "reset": "node -e \"require('fs').rmSync('wwebjs_auth',{recursive:true,force:true});require('fs').rmSync('.wwebjs_cache',{recursive:true,force:true})\" && echo Auth cleared. Run npm start to scan QR.",
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],

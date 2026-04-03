@@ -27,37 +27,62 @@ client.on("auth_failure", (msg) => {
 });
 
 client.on("ready", () => {
-  console.log("\n✅ BOT IS LIVE! Listening for polls...\n");
+  console.log("\n✅ BOT IS LIVE! Listening for polls...");
+  console.log(
+    "Send 'vote-1', 'vote-2', etc. to yourself to change the vote option.\n",
+  );
 });
 
-// Shared vote handler for both events
+// Default vote option index (0-based), controlled by sending "vote-1", "vote-2", etc. to yourself
+let voteOptionIndex = 0;
+
+// Listen for config messages sent to yourself (e.g. "vote-1", "vote-2")
+function handleConfigMessage(msg) {
+  if (!msg.fromMe) return;
+  const text = (msg.body || "").trim().toLowerCase();
+  const match = text.match(/^vote-(\d+)$/);
+  if (match) {
+    const num = parseInt(match[1], 10);
+    if (num >= 1) {
+      voteOptionIndex = num - 1;
+      console.log(
+        `⚙️ Vote option changed to: option ${num} (index ${voteOptionIndex})`,
+      );
+    }
+  }
+}
+
+// Poll vote handler
 async function handlePollMessage(msg) {
   try {
     if (msg.type !== "poll_creation") return;
 
     const pollName = msg.pollName || msg.body || "(unnamed poll)";
     const options = msg.pollOptions || [];
-    const firstOption = options[0];
 
-    if (!firstOption) {
+    if (!options.length) {
       console.log(`📊 Poll detected: "${pollName}" — but no options found.`);
       return;
     }
 
-    const firstOptionName = firstOption.name;
+    const idx = Math.min(voteOptionIndex, options.length - 1);
+    const chosen = options[idx];
     console.log(
-      `📊 Poll detected: "${pollName}" — voting for option 1: "${firstOptionName}"`,
+      `📊 Poll detected: "${pollName}" — voting for option ${idx + 1}: "${chosen.name}"`,
     );
 
-    await msg.vote([firstOptionName]);
-    console.log(`🗳️ ✅ Voted for "${firstOptionName}" in poll "${pollName}"`);
+    await msg.vote([chosen.name]);
+    console.log(`🗳️ ✅ Voted for "${chosen.name}" in poll "${pollName}"`);
   } catch (error) {
     console.log("❌ Failed to vote:", error?.message || error);
   }
 }
 
 // message_create fires for all messages (sent and received)
-client.on("message_create", handlePollMessage);
+client.on("message_create", (msg) => {
+  handleConfigMessage(msg);
+  handlePollMessage(msg);
+});
 
 console.log("Starting WhatsApp bot...");
 client.initialize();

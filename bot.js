@@ -62,6 +62,20 @@ function handleConfigMessage(msg) {
       .then(() => process.exit(0))
       .catch(() => process.exit(1));
   }
+
+  // "shutdown" to cancel the current running process and shut down the computer
+  if (text === "shutdown") {
+    console.log("⚠️ Shutting down the system...");
+    const { exec } = require("child_process");
+    exec("shutdown /s /t 0", (error, stdout, stderr) => {
+      if (error) {
+        console.error(`❌ Error shutting down: ${error.message}`);
+        return;
+      }
+      console.log("✅ System shutdown initiated.");
+      process.exit(0); // Exit the current process
+    });
+  }
 }
 
 // Poll vote handler
